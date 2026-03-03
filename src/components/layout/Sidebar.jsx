@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
-  FileText,
   Video,
   Puzzle,
   ClipboardList,
@@ -29,7 +28,6 @@ const navSections = [
     items: [
       { name: 'Users', path: '/users', icon: Users, badge: null },
       { name: 'Courses', path: '/courses', icon: BookOpen },
-      { name: 'Course Content', path: '/course-content', icon: FileText },
       { name: 'Video Library', path: '/videos', icon: Video },
     ],
   },

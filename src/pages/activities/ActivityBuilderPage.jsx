@@ -20,6 +20,7 @@ import {
   updateDragDropActivity,
   deleteDragDropActivity,
 } from '../../api/activities';
+import { getAllLessons } from '../../api/courses';
 
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -56,6 +57,40 @@ const dragDropFormSchema = z.object({
   instructions: z.string().optional().default(''),
   status: z.enum(['draft', 'published']),
 });
+
+/* ------------------------------------------------------------------ */
+/*  Shared Lesson dropdown                                             */
+/* ------------------------------------------------------------------ */
+
+function LessonSelect({ register, error }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['allLessons'],
+    queryFn: getAllLessons,
+  });
+
+  const lessons = data?.data || [];
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-text-primary mb-1.5">Lesson</label>
+      <select
+        {...register('lessonUuid')}
+        disabled={isLoading}
+        className="w-full rounded-lg border border-surface-border bg-surface text-text-primary
+          focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
+          px-3 py-2 text-sm disabled:opacity-50"
+      >
+        <option value="">{isLoading ? 'Loading lessons…' : 'Select a lesson'}</option>
+        {lessons.map((l) => (
+          <option key={l.uuid} value={l.uuid}>
+            {l.title} ({l.type})
+          </option>
+        ))}
+      </select>
+      {error && <p className="text-danger text-xs mt-1">{error}</p>}
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Tabs config                                                        */
@@ -144,7 +179,7 @@ function QuizBuilderModal({ isOpen, onClose, onSubmit, loading, editing }) {
     <Modal isOpen={isOpen} onClose={onClose} title={editing ? 'Edit Quiz' : 'Create Quiz'} size="lg">
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
         <Input label="Title" placeholder="Quiz title" error={errors.title?.message} {...register('title')} />
-        <Input label="Lesson UUID" placeholder="Enter lesson UUID" error={errors.lessonUuid?.message} {...register('lessonUuid')} />
+        <LessonSelect register={register} error={errors.lessonUuid?.message} />
         <div className="grid grid-cols-2 gap-4">
           <Input label="Passing Score (%)" type="number" min={0} max={100} error={errors.passingScore?.message} {...register('passingScore')} />
           <Select
@@ -284,7 +319,7 @@ function FlashcardBuilderModal({ isOpen, onClose, onSubmit, loading, editing }) 
     <Modal isOpen={isOpen} onClose={onClose} title={editing ? 'Edit Flashcard Set' : 'Create Flashcard Set'} size="lg">
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
         <Input label="Title" placeholder="Flashcard set title" error={errors.title?.message} {...register('title')} />
-        <Input label="Lesson UUID" placeholder="Enter lesson UUID" error={errors.lessonUuid?.message} {...register('lessonUuid')} />
+        <LessonSelect register={register} error={errors.lessonUuid?.message} />
         <Select
           label="Status"
           options={[
@@ -421,7 +456,7 @@ function DragDropBuilderModal({ isOpen, onClose, onSubmit, loading, editing }) {
     <Modal isOpen={isOpen} onClose={onClose} title={editing ? 'Edit Drag & Drop Activity' : 'Create Drag & Drop Activity'} size="lg">
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
         <Input label="Title" placeholder="Activity title" error={errors.title?.message} {...register('title')} />
-        <Input label="Lesson UUID" placeholder="Enter lesson UUID" error={errors.lessonUuid?.message} {...register('lessonUuid')} />
+        <LessonSelect register={register} error={errors.lessonUuid?.message} />
         <div className="grid grid-cols-2 gap-4">
           <Select
             label="Type"

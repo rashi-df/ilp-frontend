@@ -1,8 +1,13 @@
 import { useState, useCallback } from 'react';
+import { MediaPlayer, MediaProvider } from '@vidstack/react';
+import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/layouts/default';
+import '@vidstack/react/player/styles/default/theme.css';
+import '@vidstack/react/player/styles/default/layouts/video.css';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import * as tus from 'tus-js-client';
 import toast from 'react-hot-toast';
 import {
   Plus,
@@ -21,6 +26,7 @@ import {
   deleteVideo,
   linkVideoToLesson,
 } from '../../api/videos';
+import { getCourses, getAllLessons } from '../../api/courses';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
@@ -30,22 +36,26 @@ import Pagination from '../../components/ui/Pagination';
 import DataTable from '../../components/ui/DataTable';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import FileUpload from '../../components/ui/FileUpload';
+import { formatDuration } from '../../utils/formatters';
+import { videoStatusBadge } from '../../utils/statusConfig';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 /* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
+/*  HLS Video Player                                                   */
 /* ------------------------------------------------------------------ */
-function formatDuration(seconds) {
-  if (!seconds || seconds <= 0) return '--:--';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+function HlsPlayer({ url, onError }) {
+  return (
+    <MediaPlayer
+      src={url}
+      autoPlay
+      onError={onError}
+      className="w-full h-full"
+    >
+      <MediaProvider />
+      <DefaultVideoLayout icons={defaultLayoutIcons} />
+    </MediaPlayer>
+  );
 }
-
-const statusBadge = {
-  processing: { variant: 'warning', label: 'Processing' },
-  ready: { variant: 'success', label: 'Ready' },
-  failed: { variant: 'danger', label: 'Failed' },
-};
 
 /* ------------------------------------------------------------------ */
 /*  Zod schemas                                                        */
@@ -191,20 +201,63 @@ function LinkForm({ defaultValues, onSubmit, loading }) {
     },
   });
 
+  const { data: coursesData } = useQuery({
+    queryKey: ['courses-all'],
+    queryFn: () => getCourses({ limit: 200 }),
+  });
+
+  const { data: lessonsData } = useQuery({
+    queryKey: ['lessons-all'],
+    queryFn: getAllLessons,
+  });
+
+  const courses = coursesData?.data || [];
+  const lessons = lessonsData?.data || [];
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <Input
-        label="Course UUID"
-        placeholder="Enter course UUID"
-        error={errors.courseUuid?.message}
-        {...register('courseUuid')}
-      />
-      <Input
-        label="Lesson UUID"
-        placeholder="Enter lesson UUID"
-        error={errors.lessonUuid?.message}
-        {...register('lessonUuid')}
-      />
+      <div className="w-full">
+        <label className="block text-sm font-medium text-text-primary mb-1.5">
+          Course
+        </label>
+        <select
+          {...register('courseUuid')}
+          className="w-full rounded-lg border border-surface-border bg-surface text-text-primary
+            focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
+            px-3 py-2 text-sm"
+        >
+          <option value="">-- None --</option>
+          {courses.map((c) => (
+            <option key={c.uuid} value={c.uuid}>
+              {c.title}
+            </option>
+          ))}
+        </select>
+        {errors.courseUuid && (
+          <p className="text-xs text-danger mt-1">{errors.courseUuid.message}</p>
+        )}
+      </div>
+      <div className="w-full">
+        <label className="block text-sm font-medium text-text-primary mb-1.5">
+          Lesson
+        </label>
+        <select
+          {...register('lessonUuid')}
+          className="w-full rounded-lg border border-surface-border bg-surface text-text-primary
+            focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
+            px-3 py-2 text-sm"
+        >
+          <option value="">-- None --</option>
+          {lessons.map((l) => (
+            <option key={l.uuid} value={l.uuid}>
+              {l.title}
+            </option>
+          ))}
+        </select>
+        {errors.lessonUuid && (
+          <p className="text-xs text-danger mt-1">{errors.lessonUuid.message}</p>
+        )}
+      </div>
       <div className="flex justify-end gap-3 pt-2">
         <Button type="submit" loading={loading}>
           Link Video
@@ -221,12 +274,13 @@ export default function VideoLibraryPage() {
   const queryClient = useQueryClient();
 
   /* ---- State ---- */
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
+  const { search, page, setPage, handleSearch } = usePaginatedQuery();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [linkTarget, setLinkTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [previewTarget, setPreviewTarget] = useState(null);
+  const [previewError, setPreviewError] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -278,10 +332,6 @@ export default function VideoLibraryPage() {
   });
 
   /* ---- Handlers ---- */
-  const handleSearch = useCallback((val) => {
-    setSearch(val);
-    setPage(1);
-  }, []);
 
   const handleUpload = useCallback(
     async ({ title, description, file }) => {
@@ -289,64 +339,32 @@ export default function VideoLibraryPage() {
         setUploading(true);
         setUploadProgress(0);
 
-        // Step 1: Get upload credentials from our API
+        // Step 1: get credentials from our API (creates video on Bunny)
         const credResponse = await getUploadCredentials({ title, description });
-        const { video, uploadCredentials } = credResponse.data;
+        const { video, tusCredentials } = credResponse.data;
 
-        // Step 2: Upload file directly to VdoCipher using XMLHttpRequest for progress
+        // Step 2: TUS upload directly to Bunny
         await new Promise((resolve, reject) => {
-          const formData = new FormData();
-
-          // Add all credential fields to the form data
-          // VdoCipher expects key, policy, x-amz-signature, x-amz-algorithm,
-          // x-amz-date, x-amz-credential, and success_action_status
-          if (uploadCredentials) {
-            Object.entries(uploadCredentials).forEach(([key, value]) => {
-              if (key !== 'uploadLink') {
-                formData.append(key, value);
-              }
-            });
-          }
-
-          // The file must be the last field
-          formData.append('file', file);
-
-          const xhr = new XMLHttpRequest();
-
-          xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable) {
-              const pct = (e.loaded / e.total) * 100;
-              setUploadProgress(pct);
-            }
+          const upload = new tus.Upload(file, {
+            endpoint: 'https://video.bunnycdn.com/tusupload',
+            retryDelays: [0, 3000, 5000, 10000],
+            headers: {
+              AuthorizationSignature: tusCredentials.signature,
+              AuthorizationExpire: String(tusCredentials.expiry),
+              VideoId: tusCredentials.videoId,
+              LibraryId: String(tusCredentials.libraryId),
+            },
+            metadata: { filetype: file.type, title },
+            onProgress: (loaded, total) => {
+              setUploadProgress((loaded / total) * 100);
+            },
+            onSuccess: resolve,
+            onError: reject,
           });
-
-          xhr.addEventListener('load', () => {
-            if (xhr.status >= 200 && xhr.status < 400) {
-              resolve();
-            } else {
-              reject(new Error(`Upload failed with status ${xhr.status}`));
-            }
-          });
-
-          xhr.addEventListener('error', () => {
-            reject(new Error('Upload failed'));
-          });
-
-          xhr.addEventListener('abort', () => {
-            reject(new Error('Upload aborted'));
-          });
-
-          const uploadUrl = uploadCredentials?.uploadLink || uploadCredentials?.action;
-          if (!uploadUrl) {
-            reject(new Error('No upload URL received from VdoCipher'));
-            return;
-          }
-
-          xhr.open('POST', uploadUrl);
-          xhr.send(formData);
+          upload.start();
         });
 
-        // Step 3: Confirm upload to our backend
+        // Step 3: confirm upload to our backend
         await confirmUpload(video.uuid, { fileSize: file.size });
 
         queryClient.invalidateQueries({ queryKey: ['videos'] });
@@ -423,7 +441,7 @@ export default function VideoLibraryPage() {
       key: 'status',
       header: 'Status',
       render: (row) => {
-        const badge = statusBadge[row.status] || statusBadge.processing;
+        const badge = videoStatusBadge[row.status] || videoStatusBadge.processing;
         return <Badge variant={badge.variant}>{badge.label}</Badge>;
       },
     },
@@ -450,6 +468,16 @@ export default function VideoLibraryPage() {
       header: 'Actions',
       render: (row) => (
         <div className="flex items-center gap-1">
+          {(row.stream_url || row.embed_url) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setPreviewTarget(row); setPreviewError(false); }}
+              title="Preview"
+            >
+              <Play className="w-3.5 h-3.5" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -571,12 +599,41 @@ export default function VideoLibraryPage() {
           <LinkForm
             key={linkTarget.uuid}
             defaultValues={{
-              courseUuid: linkTarget.courseUuid || '',
-              lessonUuid: linkTarget.lessonUuid || '',
+              courseUuid: linkTarget.course?.uuid || '',
+              lessonUuid: linkTarget.lesson?.uuid || '',
             }}
             onSubmit={handleLink}
             loading={linkMutation.isPending}
           />
+        )}
+      </Modal>
+
+      {/* ---- Preview Modal ---- */}
+      <Modal
+        isOpen={!!previewTarget}
+        onClose={() => setPreviewTarget(null)}
+        title={previewTarget?.title || 'Preview'}
+        size="xl"
+      >
+        {previewTarget && (
+          previewError || !previewTarget.stream_url ? (
+            <div className="aspect-video w-full">
+              <iframe
+                src={previewTarget.embed_url}
+                className="w-full h-full rounded-lg"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+                title={previewTarget.title}
+              />
+            </div>
+          ) : (
+            <div className="aspect-video w-full rounded-lg overflow-hidden">
+              <HlsPlayer
+                url={previewTarget.stream_url}
+                onError={() => setPreviewError(true)}
+              />
+            </div>
+          )
         )}
       </Modal>
 
@@ -586,7 +643,7 @@ export default function VideoLibraryPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         title="Delete Video"
-        message={`Are you sure you want to delete "${deleteTarget?.title}"? This will also remove the video from VdoCipher. This action cannot be undone.`}
+        message={`Are you sure you want to delete "${deleteTarget?.title}"? This action cannot be undone.`}
         confirmText="Delete"
         confirmVariant="danger"
       />

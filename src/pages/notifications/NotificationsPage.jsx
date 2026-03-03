@@ -29,6 +29,9 @@ import SearchBar from '../../components/ui/SearchBar';
 import Pagination from '../../components/ui/Pagination';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Modal from '../../components/ui/Modal';
+import { formatDateTime } from '../../utils/formatters';
+import { notificationStatusBadge } from '../../utils/statusConfig';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -51,13 +54,6 @@ const AUDIENCE_LABELS = {
   basic: 'Basic',
   inactive: 'Inactive',
   course_specific: 'Course Specific',
-};
-
-const STATUS_BADGE_VARIANT = {
-  draft: 'default',
-  scheduled: 'warning',
-  sent: 'success',
-  failed: 'danger',
 };
 
 const SEND_OPTIONS = [
@@ -85,20 +81,6 @@ const notificationSchema = z
     { message: 'Scheduled date is required', path: ['scheduledAt'] }
   );
 
-/* ------------------------------------------------------------------ */
-/*  Helper: format date                                                */
-/* ------------------------------------------------------------------ */
-function formatDate(dateStr) {
-  if (!dateStr) return '-';
-  return new Date(dateStr).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 /* ================================================================== */
 /*  NotificationsPage                                                  */
 /* ================================================================== */
@@ -106,8 +88,7 @@ export default function NotificationsPage() {
   const queryClient = useQueryClient();
 
   /* ---- State ---- */
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
+  const { search, page, setPage, handleSearch } = usePaginatedQuery();
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -272,11 +253,6 @@ export default function NotificationsPage() {
 
   const handleSendNow = (uuid) => {
     sendMutation.mutate(uuid);
-  };
-
-  const handleSearch = (value) => {
-    setSearch(value);
-    setPage(1);
   };
 
   const canModify = (status) => status === 'draft' || status === 'scheduled';
@@ -486,7 +462,7 @@ export default function NotificationsPage() {
                           {n.message}
                         </p>
                       </div>
-                      <Badge variant={STATUS_BADGE_VARIANT[n.status] || 'default'}>
+                      <Badge variant={notificationStatusBadge[n.status] || 'default'}>
                         {n.status}
                       </Badge>
                     </div>
@@ -502,10 +478,10 @@ export default function NotificationsPage() {
                       )}
                       <span className="text-xs text-text-muted">
                         {n.sentAt
-                          ? `Sent ${formatDate(n.sentAt)}`
+                          ? `Sent ${formatDateTime(n.sentAt)}`
                           : n.scheduledAt
-                            ? `Scheduled ${formatDate(n.scheduledAt)}`
-                            : `Created ${formatDate(n.createdAt)}`}
+                            ? `Scheduled ${formatDateTime(n.scheduledAt)}`
+                            : `Created ${formatDateTime(n.createdAt)}`}
                       </span>
                     </div>
 

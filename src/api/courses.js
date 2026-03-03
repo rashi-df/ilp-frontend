@@ -36,6 +36,9 @@ export const reorderModules = (data) =>
   api.patch('/modules/reorder', data).then((r) => r.data);
 
 // Lessons
+export const getAllLessons = () =>
+  api.get('/lessons').then((r) => r.data);
+
 export const getLessons = (moduleUuid) =>
   api.get(`/lessons/module/${moduleUuid}`).then((r) => r.data);
 

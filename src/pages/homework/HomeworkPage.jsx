@@ -4,6 +4,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
+import { useCrudModal } from '../../hooks/useCrudModal';
+import { useCrudMutations } from '../../hooks/useCrudMutations';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import { Plus, Pencil, Trash2, ClipboardCheck } from 'lucide-react';
 import {
   getHomeworkList,
@@ -276,11 +279,15 @@ export default function HomeworkPage() {
   const [activeTab, setActiveTab] = useState('homework');
 
   /* ---- Homework state ---- */
-  const [hwModalOpen, setHwModalOpen] = useState(false);
-  const [hwEditing, setHwEditing] = useState(null);
+  const {
+    modalOpen: hwModalOpen,
+    editing: hwEditing,
+    openCreate: openHwCreate,
+    openEdit: openHwEdit,
+    closeModal: closeHwModal,
+  } = useCrudModal();
   const [hwDeleteTarget, setHwDeleteTarget] = useState(null);
-  const [hwPage, setHwPage] = useState(1);
-  const [hwSearch, setHwSearch] = useState('');
+  const { search: hwSearch, page: hwPage, setPage: setHwPage, handleSearch: handleHwSearch } = usePaginatedQuery();
   const [hwFilterStatus, setHwFilterStatus] = useState('');
 
   /* ---- Submissions state ---- */
@@ -317,59 +324,23 @@ export default function HomeworkPage() {
   const homeworks = hwResponse?.data || [];
   const hwTotalPages = hwResponse?.pagination?.pages || 1;
 
-  const createMutation = useMutation({
-    mutationFn: createHomework,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['homework'] });
-      toast.success('Homework created successfully');
-      closeHwModal();
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to create homework');
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ uuid, data }) => updateHomework(uuid, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['homework'] });
-      toast.success('Homework updated successfully');
-      closeHwModal();
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to update homework');
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteHomework,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['homework'] });
+  const { createMutation, updateMutation, deleteMutation } = useCrudMutations({
+    queryKey: ['homework'],
+    createFn: createHomework,
+    createMsg: 'Homework created successfully',
+    onCreateSuccess: closeHwModal,
+    updateFn: ({ uuid, data }) => updateHomework(uuid, data),
+    updateMsg: 'Homework updated successfully',
+    onUpdateSuccess: closeHwModal,
+    deleteFn: deleteHomework,
+    deleteMsg: 'Homework deleted successfully',
+    onDeleteSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['submissions'] });
-      toast.success('Homework deleted successfully');
       setHwDeleteTarget(null);
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to delete homework');
     },
   });
 
   /* ---- Homework handlers ---- */
-  const openHwCreate = () => {
-    setHwEditing(null);
-    setHwModalOpen(true);
-  };
-
-  const openHwEdit = (hw) => {
-    setHwEditing(hw);
-    setHwModalOpen(true);
-  };
-
-  const closeHwModal = () => {
-    setHwModalOpen(false);
-    setHwEditing(null);
-  };
-
   const handleHwFormSubmit = (data) => {
     // Convert empty dueDate string to null
     const payload = { ...data, dueDate: data.dueDate || null };
@@ -384,11 +355,6 @@ export default function HomeworkPage() {
     if (hwDeleteTarget) {
       deleteMutation.mutate(hwDeleteTarget.uuid);
     }
-  };
-
-  const handleHwSearch = (value) => {
-    setHwSearch(value);
-    setHwPage(1);
   };
 
   /* ---- Homework table columns ---- */

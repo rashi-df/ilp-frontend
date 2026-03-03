@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import toast from 'react-hot-toast';
+import { useCrudModal } from '../../hooks/useCrudModal';
+import { useCrudMutations } from '../../hooks/useCrudMutations';
 import {
   Plus,
   Pencil,
@@ -71,11 +72,8 @@ function CategoryForm({ defaultValues, onSubmit, loading }) {
 /*  CategoriesPage                                                     */
 /* ================================================================== */
 export default function CategoriesPage() {
-  const queryClient = useQueryClient();
-
   /* ---- State ---- */
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // null = create, object = edit
+  const { modalOpen, editing, openCreate, openEdit, closeModal } = useCrudModal();
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   /* ---- Queries ---- */
@@ -86,58 +84,20 @@ export default function CategoriesPage() {
   } = useQuery({ queryKey: ['categories'], queryFn: getCategories });
 
   /* ---- Mutations ---- */
-  const createMutation = useMutation({
-    mutationFn: createCategory,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
-      toast.success('Category created successfully');
-      closeModal();
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || 'Failed to create category');
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => updateCategory(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
-      toast.success('Category updated successfully');
-      closeModal();
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || 'Failed to update category');
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteCategory,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
-      toast.success('Category deleted successfully');
-      setDeleteTarget(null);
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || 'Failed to delete category');
-    },
+  const { createMutation, updateMutation, deleteMutation } = useCrudMutations({
+    queryKey: ['categories'],
+    createFn: createCategory,
+    createMsg: 'Category created successfully',
+    onCreateSuccess: closeModal,
+    updateFn: ({ id, data }) => updateCategory(id, data),
+    updateMsg: 'Category updated successfully',
+    onUpdateSuccess: closeModal,
+    deleteFn: deleteCategory,
+    deleteMsg: 'Category deleted successfully',
+    onDeleteSuccess: () => setDeleteTarget(null),
   });
 
   /* ---- Handlers ---- */
-  const openCreate = () => {
-    setEditing(null);
-    setModalOpen(true);
-  };
-
-  const openEdit = (category) => {
-    setEditing(category);
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditing(null);
-  };
-
   const handleFormSubmit = (data) => {
     if (editing) {
       updateMutation.mutate({ id: editing.uuid, data });
@@ -199,7 +159,7 @@ export default function CategoriesPage() {
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {categoryList.map((cat) => (
             <div
-              key={cat.id}
+              key={cat.uuid}
               className="bg-white rounded-xl border border-surface-border p-5 hover:shadow-md transition-shadow"
             >
               {/* Icon + Name */}
@@ -212,7 +172,7 @@ export default function CategoriesPage() {
                     {cat.name}
                   </h3>
                   <p className="text-xs text-text-muted mt-0.5">
-                    {cat.courseCount ?? 0} course{(cat.courseCount ?? 0) !== 1 ? 's' : ''}
+                    {cat.courses_count ?? 0} course{(cat.courses_count ?? 0) !== 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
@@ -254,7 +214,7 @@ export default function CategoriesPage() {
         size="sm"
       >
         <CategoryForm
-          key={editing?.id || 'new'}
+          key={editing?.uuid || 'new'}
           defaultValues={editing ? { name: editing.name, icon: editing.icon } : null}
           onSubmit={handleFormSubmit}
           loading={createMutation.isPending || updateMutation.isPending}

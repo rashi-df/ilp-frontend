@@ -35,6 +35,8 @@ import Pagination from '../../components/ui/Pagination';
 import DataTable from '../../components/ui/DataTable';
 import Spinner from '../../components/ui/Spinner';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { paymentStatusBadge } from '../../utils/statusConfig';
+import { useCrudModal } from '../../hooks/useCrudModal';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -46,13 +48,6 @@ const TABS = [
 ];
 
 const PAGE_SIZE = 10;
-
-const STATUS_BADGE = {
-  pending: 'warning',
-  completed: 'success',
-  failed: 'danger',
-  refunded: 'info',
-};
 
 const PAYMENT_METHODS = [
   { value: '', label: 'All Methods' },
@@ -168,8 +163,13 @@ export default function PaymentsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [planModalOpen, setPlanModalOpen] = useState(false);
-  const [editingPlan, setEditingPlan] = useState(null);
+  const {
+    modalOpen: planModalOpen,
+    editing: editingPlan,
+    openCreate: openCreatePlan,
+    openEdit: openEditPlan,
+    closeModal: closePlanModal,
+  } = useCrudModal();
 
   // Verify tab confirm dialogs
   const [confirmAction, setConfirmAction] = useState(null); // { type: 'approve'|'reject', uuid, transactionId }
@@ -283,21 +283,6 @@ export default function PaymentsPage() {
   });
 
   /* ---- Handlers ---- */
-  const openCreatePlan = () => {
-    setEditingPlan(null);
-    setPlanModalOpen(true);
-  };
-
-  const openEditPlan = (plan) => {
-    setEditingPlan(plan);
-    setPlanModalOpen(true);
-  };
-
-  const closePlanModal = () => {
-    setPlanModalOpen(false);
-    setEditingPlan(null);
-  };
-
   const handlePlanFormSubmit = (data) => {
     if (editingPlan) {
       updatePlanMutation.mutate({ uuid: editingPlan.uuid, data });
@@ -395,7 +380,7 @@ export default function PaymentsPage() {
       key: 'status',
       header: 'Status',
       render: (row) => (
-        <Badge variant={STATUS_BADGE[row.status] || 'default'}>
+        <Badge variant={paymentStatusBadge[row.status] || 'default'}>
           {row.status}
         </Badge>
       ),

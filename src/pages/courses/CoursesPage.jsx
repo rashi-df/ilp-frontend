@@ -5,6 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { courseLevelBadge, courseStatusBadge } from '../../utils/statusConfig';
+import { useCrudModal } from '../../hooks/useCrudModal';
+import { useCrudMutations } from '../../hooks/useCrudMutations';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import {
   Plus,
   Pencil,
@@ -137,20 +141,6 @@ function CourseForm({ defaultValues, onSubmit, loading, categories, mentors }) {
 }
 
 /* ================================================================== */
-/*  Helper components                                                  */
-/* ================================================================== */
-const levelVariant = {
-  beginner: 'success',
-  intermediate: 'warning',
-  advanced: 'danger',
-};
-
-const statusVariant = {
-  published: 'success',
-  draft: 'default',
-};
-
-/* ================================================================== */
 /*  CoursesPage                                                        */
 /* ================================================================== */
 export default function CoursesPage() {
@@ -158,11 +148,9 @@ export default function CoursesPage() {
   const navigate = useNavigate();
 
   /* ---- State ---- */
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
+  const { modalOpen, editing, openCreate, openEdit, closeModal } = useCrudModal();
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
+  const { search, page, setPage, handleSearch } = usePaginatedQuery();
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
@@ -200,40 +188,17 @@ export default function CoursesPage() {
   const mentors = mentorsData?.data || [];
 
   /* ---- Mutations ---- */
-  const createMutation = useMutation({
-    mutationFn: createCourse,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['courses'] });
-      toast.success('Course created successfully');
-      closeModal();
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to create course');
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ uuid, data }) => updateCourse(uuid, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['courses'] });
-      toast.success('Course updated successfully');
-      closeModal();
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to update course');
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteCourse,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['courses'] });
-      toast.success('Course deleted successfully');
-      setDeleteTarget(null);
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to delete course');
-    },
+  const { createMutation, updateMutation, deleteMutation } = useCrudMutations({
+    queryKey: ['courses'],
+    createFn: createCourse,
+    createMsg: 'Course created successfully',
+    onCreateSuccess: closeModal,
+    updateFn: ({ uuid, data }) => updateCourse(uuid, data),
+    updateMsg: 'Course updated successfully',
+    onUpdateSuccess: closeModal,
+    deleteFn: deleteCourse,
+    deleteMsg: 'Course deleted successfully',
+    onDeleteSuccess: () => setDeleteTarget(null),
   });
 
   const publishMutation = useMutation({
@@ -248,21 +213,6 @@ export default function CoursesPage() {
   });
 
   /* ---- Handlers ---- */
-  const openCreate = () => {
-    setEditing(null);
-    setModalOpen(true);
-  };
-
-  const openEdit = (course) => {
-    setEditing(course);
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditing(null);
-  };
-
   const handleFormSubmit = (data) => {
     if (editing) {
       updateMutation.mutate({ uuid: editing.uuid, data });
@@ -275,11 +225,6 @@ export default function CoursesPage() {
     if (deleteTarget) {
       deleteMutation.mutate(deleteTarget.uuid);
     }
-  };
-
-  const handleSearch = (value) => {
-    setSearch(value);
-    setPage(1);
   };
 
   /* ---- Category / Status filter options ---- */
@@ -387,10 +332,10 @@ export default function CoursesPage() {
               <div className="p-4 flex flex-col flex-1">
                 {/* Badges row */}
                 <div className="flex items-center gap-2 flex-wrap mb-2">
-                  <Badge variant={statusVariant[course.status]}>
+                  <Badge variant={courseStatusBadge[course.status]}>
                     {course.status}
                   </Badge>
-                  <Badge variant={levelVariant[course.level]}>
+                  <Badge variant={courseLevelBadge[course.level]}>
                     {course.level}
                   </Badge>
                   {course.category && (

@@ -32,6 +32,8 @@ import Pagination from '../../components/ui/Pagination';
 import DataTable from '../../components/ui/DataTable';
 import Spinner from '../../components/ui/Spinner';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { certificateStatusBadge } from '../../utils/statusConfig';
+import { useCrudModal } from '../../hooks/useCrudModal';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -42,11 +44,6 @@ const TABS = [
 ];
 
 const PAGE_SIZE = 10;
-
-const STATUS_BADGE = {
-  issued: 'success',
-  revoked: 'danger',
-};
 
 const BORDER_STYLE_OPTIONS = [
   { value: 'classic', label: 'Classic' },
@@ -362,8 +359,13 @@ export default function CertificatesPage() {
   const [page, setPage] = useState(1);
 
   // Template modals
-  const [templateModalOpen, setTemplateModalOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState(null);
+  const {
+    modalOpen: templateModalOpen,
+    editing: editingTemplate,
+    openCreate: openCreateTemplate,
+    openEdit: openEditTemplate,
+    closeModal: closeTemplateModal,
+  } = useCrudModal();
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   // Certificate modals
@@ -459,21 +461,6 @@ export default function CertificatesPage() {
   });
 
   /* ---- Handlers ---- */
-  const openCreateTemplate = () => {
-    setEditingTemplate(null);
-    setTemplateModalOpen(true);
-  };
-
-  const openEditTemplate = (template) => {
-    setEditingTemplate(template);
-    setTemplateModalOpen(true);
-  };
-
-  const closeTemplateModal = () => {
-    setTemplateModalOpen(false);
-    setEditingTemplate(null);
-  };
-
   const handleTemplateFormSubmit = (data) => {
     if (editingTemplate) {
       updateTemplateMutation.mutate({ uuid: editingTemplate.uuid, data });
@@ -533,7 +520,7 @@ export default function CertificatesPage() {
       key: 'status',
       header: 'Status',
       render: (row) => (
-        <Badge variant={STATUS_BADGE[row.status] || 'default'}>
+        <Badge variant={certificateStatusBadge[row.status] || 'default'}>
           {row.status}
         </Badge>
       ),
@@ -787,7 +774,7 @@ export default function CertificatesPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-text-muted">Status:</span>
-                <Badge variant={STATUS_BADGE[viewCert.status] || 'default'}>
+                <Badge variant={certificateStatusBadge[viewCert.status] || 'default'}>
                   {viewCert.status}
                 </Badge>
               </div>

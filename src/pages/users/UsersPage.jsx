@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getInitials } from '../../utils/formatters';
+import { useCrudModal } from '../../hooks/useCrudModal';
+import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -120,10 +123,8 @@ export default function UsersPage() {
 
   /* ---- State ---- */
   const [activeTab, setActiveTab] = useState('student');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // null = create, object = edit
+  const { search, page, setPage, handleSearch, resetPagination } = usePaginatedQuery();
+  const { modalOpen, editing, openCreate, openEdit, closeModal } = useCrudModal();
 
   /* ---- Query ---- */
   const {
@@ -181,21 +182,6 @@ export default function UsersPage() {
   });
 
   /* ---- Handlers ---- */
-  const openCreate = () => {
-    setEditing(null);
-    setModalOpen(true);
-  };
-
-  const openEdit = (user) => {
-    setEditing(user);
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditing(null);
-  };
-
   const handleFormSubmit = (data) => {
     if (editing) {
       updateMutation.mutate({ uuid: editing.uuid, data });
@@ -206,13 +192,7 @@ export default function UsersPage() {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    setPage(1);
-    setSearch('');
-  };
-
-  const handleSearch = (value) => {
-    setSearch(value);
-    setPage(1);
+    resetPagination();
   };
 
   /* ---- Column definitions ---- */
@@ -434,12 +414,3 @@ export default function UsersPage() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Helper                                                             */
-/* ------------------------------------------------------------------ */
-function getInitials(name) {
-  if (!name) return '?';
-  const parts = name.trim().split(' ');
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return parts[0][0].toUpperCase();
-}
