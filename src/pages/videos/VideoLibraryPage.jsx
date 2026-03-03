@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { MediaPlayer, MediaProvider } from '@vidstack/react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { MediaPlayer, MediaProvider, Menu, useVideoQualityOptions, usePlaybackRateOptions } from '@vidstack/react';
 import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/layouts/default';
 import '@vidstack/react/player/styles/default/theme.css';
 import '@vidstack/react/player/styles/default/layouts/video.css';
@@ -17,6 +17,7 @@ import {
   Play,
   Video,
   Film,
+  X,
 } from 'lucide-react';
 import {
   getVideos,
@@ -26,7 +27,8 @@ import {
   deleteVideo,
   linkVideoToLesson,
 } from '../../api/videos';
-import { getCourses, getAllLessons } from '../../api/courses';
+import { getCourses, getCourseByUuid } from '../../api/courses';
+import { getCategories } from '../../api/categories';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
@@ -41,6 +43,146 @@ import { videoStatusBadge } from '../../utils/statusConfig';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
 
 /* ------------------------------------------------------------------ */
+/*  YouTube-style Settings Menu (main → speed/quality subpanels)      */
+/* ------------------------------------------------------------------ */
+function FlatSettingsMenu() {
+  const qualities = useVideoQualityOptions({ auto: true });
+  const rates = usePlaybackRateOptions();
+  const SettingsIcon = defaultLayoutIcons.Menu.Settings;
+  const [panel, setPanel] = useState(null); // null | 'speed' | 'quality'
+  const wrapperRef = useRef(null);
+
+  // When in a subpanel, listen for clicks outside the menu and reset to main panel.
+  useEffect(() => {
+    if (panel === null) return;
+    const handlePointerDown = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setPanel(null);
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    return () => document.removeEventListener('pointerdown', handlePointerDown, true);
+  }, [panel]);
+
+  const selectedRate = rates.find((r) => r.value === rates.selectedValue);
+  const selectedQuality = qualities.find((q) => q.value === qualities.selectedValue);
+
+  return (
+    <div ref={wrapperRef}>
+    <Menu.Root className="vds-settings-menu vds-menu">
+      <Menu.Button className="vds-menu-button vds-button" aria-label="Settings">
+        <SettingsIcon className="vds-icon vds-rotate-icon" />
+      </Menu.Button>
+      <Menu.Items
+        className="vds-menu-items"
+        placement="top end"
+        style={{ minWidth: '220px', minHeight: panel !== null ? '220px' : undefined }}
+      >
+
+        {/* ── Main panel ── */}
+        {panel === null && (
+          <div className="w-full">
+            <button
+              className="flex w-full items-center justify-between px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors cursor-pointer"
+              onClick={() => setPanel('speed')}
+            >
+              <span>Playback speed</span>
+              <span className="flex items-center gap-1 text-white/60">
+                {selectedRate?.label ?? 'Normal'}
+                <span className="text-base leading-none">›</span>
+              </span>
+            </button>
+            <button
+              className="flex w-full items-center justify-between px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors cursor-pointer"
+              onClick={() => setPanel('quality')}
+            >
+              <span>Quality</span>
+              <span className="flex items-center gap-1 text-white/60">
+                {selectedQuality?.label ?? 'Auto'}
+                <span className="text-base leading-none">›</span>
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* ── Speed subpanel ── */}
+        {panel === 'speed' && (
+          <div className="w-full">
+            <div className="flex w-full items-center px-4 py-2 border-b border-white/10">
+              <button
+                className="w-5 shrink-0 text-center text-white/70 hover:text-white text-lg leading-none"
+                onClick={() => setPanel(null)}
+                aria-label="Back"
+              >
+                ‹
+              </button>
+              <span className="ml-2 text-sm font-medium text-white">Playback speed</span>
+            </div>
+            <Menu.RadioGroup
+              className="vds-radio-group w-full"
+              value={rates.selectedValue}
+              onChange={(v) => rates.find((r) => r.value === v)?.select()}
+            >
+              {rates.map(({ label, value }) => (
+                <Menu.Radio
+                  key={value}
+                  className="flex w-full items-center px-4 py-2 text-sm text-white/90 hover:bg-white/10 cursor-pointer"
+                  value={value}
+                >
+                  <span className="w-5 shrink-0 text-center text-white text-base">
+                    {value === rates.selectedValue ? '✓' : ''}
+                  </span>
+                  <span className="ml-2">{label}</span>
+                </Menu.Radio>
+              ))}
+            </Menu.RadioGroup>
+          </div>
+        )}
+
+        {/* ── Quality subpanel ── */}
+        {panel === 'quality' && (
+          <div className="w-full">
+            <div className="flex w-full items-center px-4 py-2 border-b border-white/10">
+              <button
+                className="w-5 shrink-0 text-center text-white/70 hover:text-white text-lg leading-none"
+                onClick={() => setPanel(null)}
+                aria-label="Back"
+              >
+                ‹
+              </button>
+              <span className="ml-2 text-sm font-medium text-white">Quality</span>
+            </div>
+            <Menu.RadioGroup
+              className="vds-radio-group w-full"
+              value={qualities.selectedValue}
+              onChange={(v) => qualities.find((q) => q.value === v)?.select()}
+            >
+              {qualities.map(({ label, value, bitrateText }) => (
+                <Menu.Radio
+                  key={value}
+                  className="flex w-full items-center px-4 py-2 text-sm text-white/90 hover:bg-white/10 cursor-pointer"
+                  value={value}
+                >
+                  <span className="w-5 shrink-0 text-center text-white text-base">
+                    {value === qualities.selectedValue ? '✓' : ''}
+                  </span>
+                  <span className="ml-2">{label}</span>
+                  {bitrateText && (
+                    <span className="ml-auto text-xs text-white/40">{bitrateText}</span>
+                  )}
+                </Menu.Radio>
+              ))}
+            </Menu.RadioGroup>
+          </div>
+        )}
+
+      </Menu.Items>
+    </Menu.Root>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  HLS Video Player                                                   */
 /* ------------------------------------------------------------------ */
 function HlsPlayer({ url, onError }) {
@@ -52,7 +194,10 @@ function HlsPlayer({ url, onError }) {
       className="w-full h-full"
     >
       <MediaProvider />
-      <DefaultVideoLayout icons={defaultLayoutIcons} />
+      <DefaultVideoLayout
+        icons={defaultLayoutIcons}
+        slots={{ settingsMenu: <FlatSettingsMenu />, googleCastButton: null }}
+      />
     </MediaPlayer>
   );
 }
@@ -192,6 +337,8 @@ function LinkForm({ defaultValues, onSubmit, loading }) {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(linkSchema),
@@ -201,30 +348,89 @@ function LinkForm({ defaultValues, onSubmit, loading }) {
     },
   });
 
+  const [selectedCategoryUuid, setSelectedCategoryUuid] = useState('');
+
+  const courseUuid = watch('courseUuid');
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories-all'],
+    queryFn: getCategories,
+  });
+
   const { data: coursesData } = useQuery({
     queryKey: ['courses-all'],
     queryFn: () => getCourses({ limit: 200 }),
   });
 
-  const { data: lessonsData } = useQuery({
-    queryKey: ['lessons-all'],
-    queryFn: getAllLessons,
+  const { data: courseDetail } = useQuery({
+    queryKey: ['course-with-modules', courseUuid],
+    queryFn: () => getCourseByUuid(courseUuid, { withModules: true }),
+    enabled: !!courseUuid,
   });
 
-  const courses = coursesData?.data || [];
-  const lessons = lessonsData?.data || [];
+  const categories = categoriesData?.data || [];
+  const allCourses = coursesData?.data || [];
+
+  const courses = selectedCategoryUuid
+    ? allCourses.filter((c) => c.category?.uuid === selectedCategoryUuid)
+    : allCourses;
+
+  const lessons = courseUuid && courseDetail?.data
+    ? (courseDetail.data.modules || []).flatMap((m) => m.lessons || [])
+    : [];
+
+  // Pre-populate category when editing an already-linked video
+  useEffect(() => {
+    if (defaultValues?.courseUuid && allCourses.length > 0) {
+      const match = allCourses.find((c) => c.uuid === defaultValues.courseUuid);
+      if (match?.category?.uuid) setSelectedCategoryUuid(match.category.uuid);
+    }
+  }, [allCourses]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset lesson when course changes
+  useEffect(() => {
+    setValue('lessonUuid', '');
+  }, [courseUuid, setValue]);
+
+  const handleCategoryChange = (e) => {
+    setSelectedCategoryUuid(e.target.value);
+    setValue('courseUuid', '');
+    setValue('lessonUuid', '');
+  };
+
+  const selectClass =
+    'w-full rounded-lg border border-surface-border bg-surface text-text-primary ' +
+    'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary px-3 py-2 text-sm';
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* Category */}
+      <div className="w-full">
+        <label className="block text-sm font-medium text-text-primary mb-1.5">
+          Category
+        </label>
+        <select
+          value={selectedCategoryUuid}
+          onChange={handleCategoryChange}
+          className={selectClass}
+        >
+          <option value="">-- All Categories --</option>
+          {categories.map((cat) => (
+            <option key={cat.uuid} value={cat.uuid}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Course */}
       <div className="w-full">
         <label className="block text-sm font-medium text-text-primary mb-1.5">
           Course
         </label>
         <select
           {...register('courseUuid')}
-          className="w-full rounded-lg border border-surface-border bg-surface text-text-primary
-            focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-            px-3 py-2 text-sm"
+          className={selectClass}
         >
           <option value="">-- None --</option>
           {courses.map((c) => (
@@ -237,15 +443,15 @@ function LinkForm({ defaultValues, onSubmit, loading }) {
           <p className="text-xs text-danger mt-1">{errors.courseUuid.message}</p>
         )}
       </div>
+
+      {/* Lesson */}
       <div className="w-full">
         <label className="block text-sm font-medium text-text-primary mb-1.5">
           Lesson
         </label>
         <select
           {...register('lessonUuid')}
-          className="w-full rounded-lg border border-surface-border bg-surface text-text-primary
-            focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-            px-3 py-2 text-sm"
+          className={selectClass}
         >
           <option value="">-- None --</option>
           {lessons.map((l) => (
@@ -258,6 +464,7 @@ function LinkForm({ defaultValues, onSubmit, loading }) {
           <p className="text-xs text-danger mt-1">{errors.lessonUuid.message}</p>
         )}
       </div>
+
       <div className="flex justify-end gap-3 pt-2">
         <Button type="submit" loading={loading}>
           Link Video
@@ -282,6 +489,13 @@ export default function VideoLibraryPage() {
   const [previewTarget, setPreviewTarget] = useState(null);
   const [previewError, setPreviewError] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (!previewTarget) return;
+    const handleKey = (e) => { if (e.key === 'Escape') setPreviewTarget(null); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [previewTarget]);
   const [uploadProgress, setUploadProgress] = useState(0);
 
   /* ---- Query ---- */
@@ -608,16 +822,25 @@ export default function VideoLibraryPage() {
         )}
       </Modal>
 
-      {/* ---- Preview Modal ---- */}
-      <Modal
-        isOpen={!!previewTarget}
-        onClose={() => setPreviewTarget(null)}
-        title={previewTarget?.title || 'Preview'}
-        size="xl"
-      >
-        {previewTarget && (
-          previewError || !previewTarget.stream_url ? (
-            <div className="aspect-video w-full">
+      {/* ---- Preview Overlay ---- */}
+      {previewTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={() => setPreviewTarget(null)}
+        >
+          <div
+            className="relative w-full max-w-4xl mx-4 aspect-video"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setPreviewTarget(null)}
+              className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {previewError || !previewTarget.stream_url ? (
               <iframe
                 src={previewTarget.embed_url}
                 className="w-full h-full rounded-lg"
@@ -625,17 +848,17 @@ export default function VideoLibraryPage() {
                 allowFullScreen
                 title={previewTarget.title}
               />
-            </div>
-          ) : (
-            <div className="aspect-video w-full rounded-lg overflow-hidden">
-              <HlsPlayer
-                url={previewTarget.stream_url}
-                onError={() => setPreviewError(true)}
-              />
-            </div>
-          )
-        )}
-      </Modal>
+            ) : (
+              <div className="w-full h-full rounded-lg overflow-hidden">
+                <HlsPlayer
+                  url={previewTarget.stream_url}
+                  onError={() => setPreviewError(true)}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ---- Delete Confirm ---- */}
       <ConfirmDialog

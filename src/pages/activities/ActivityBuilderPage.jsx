@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,7 +20,8 @@ import {
   updateDragDropActivity,
   deleteDragDropActivity,
 } from '../../api/activities';
-import { getAllLessons } from '../../api/courses';
+import { getAllLessons, getCourses } from '../../api/courses';
+import { getCategories } from '../../api/categories';
 
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -59,35 +60,108 @@ const dragDropFormSchema = z.object({
 });
 
 /* ------------------------------------------------------------------ */
-/*  Shared Lesson dropdown                                             */
+/*  Cascading Category → Course → Lesson dropdowns                    */
 /* ------------------------------------------------------------------ */
 
-function LessonSelect({ register, error }) {
-  const { data, isLoading } = useQuery({
+const selectCls =
+  'w-full rounded-lg border border-surface-border bg-surface text-text-primary ' +
+  'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary ' +
+  'px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed';
+
+function LessonCascade({ setValue, value, error }) {
+  const { data: catData } = useQuery({ queryKey: ['allCategories'], queryFn: getCategories });
+  const { data: courseData } = useQuery({
+    queryKey: ['allCourses'],
+    queryFn: () => getCourses({ per_page: 100 }),
+  });
+  const { data: lessonData, isLoading } = useQuery({
     queryKey: ['allLessons'],
     queryFn: getAllLessons,
   });
 
-  const lessons = data?.data || [];
+  const [categoryUuid, setCategoryUuid] = useState('');
+  const [courseUuid, setCourseUuid] = useState('');
+
+  const categories = catData?.data || [];
+  const allCourses = courseData?.data || [];
+  const allLessons = lessonData?.data || [];
+
+  // Pre-populate selects when editing (resolve category/course from lesson UUID)
+  useEffect(() => {
+    if (!value || allLessons.length === 0) return;
+    const lesson = allLessons.find((l) => l.uuid === value);
+    if (!lesson) return;
+    const cat = lesson.module?.course?.category?.uuid || '';
+    const crs = lesson.module?.course?.uuid || '';
+    if (cat && !categoryUuid) setCategoryUuid(cat);
+    if (crs && !courseUuid) setCourseUuid(crs);
+  }, [value, allLessons.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const filteredCourses = categoryUuid
+    ? allCourses.filter((c) => c.category?.uuid === categoryUuid)
+    : allCourses;
+
+  const filteredLessons = courseUuid
+    ? allLessons.filter((l) => l.module?.course?.uuid === courseUuid)
+    : [];
+
+  const handleCategoryChange = (e) => {
+    setCategoryUuid(e.target.value);
+    setCourseUuid('');
+    setValue('lessonUuid', '');
+  };
+
+  const handleCourseChange = (e) => {
+    setCourseUuid(e.target.value);
+    setValue('lessonUuid', '');
+  };
 
   return (
-    <div>
-      <label className="block text-sm font-medium text-text-primary mb-1.5">Lesson</label>
-      <select
-        {...register('lessonUuid')}
-        disabled={isLoading}
-        className="w-full rounded-lg border border-surface-border bg-surface text-text-primary
-          focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-          px-3 py-2 text-sm disabled:opacity-50"
-      >
-        <option value="">{isLoading ? 'Loading lessons…' : 'Select a lesson'}</option>
-        {lessons.map((l) => (
-          <option key={l.uuid} value={l.uuid}>
-            {l.title} ({l.type})
-          </option>
-        ))}
-      </select>
-      {error && <p className="text-danger text-xs mt-1">{error}</p>}
+    <div className="space-y-3">
+      <div>
+        <label className="block text-sm font-medium text-text-primary mb-1.5">Category</label>
+        <select value={categoryUuid} onChange={handleCategoryChange} className={selectCls}>
+          <option value="">Select a category</option>
+          {categories.map((c) => (
+            <option key={c.uuid} value={c.uuid}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-text-primary mb-1.5">Course</label>
+        <select
+          value={courseUuid}
+          onChange={handleCourseChange}
+          disabled={!categoryUuid}
+          className={selectCls}
+        >
+          <option value="">Select a course</option>
+          {filteredCourses.map((c) => (
+            <option key={c.uuid} value={c.uuid}>
+              {c.title}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-text-primary mb-1.5">Lesson</label>
+        <select
+          value={value}
+          onChange={(e) => setValue('lessonUuid', e.target.value)}
+          disabled={!courseUuid || isLoading}
+          className={selectCls}
+        >
+          <option value="">{isLoading ? 'Loading…' : 'Select a lesson'}</option>
+          {filteredLessons.map((l) => (
+            <option key={l.uuid} value={l.uuid}>
+              {l.title} ({l.type})
+            </option>
+          ))}
+        </select>
+        {error && <p className="text-danger text-xs mt-1">{error}</p>}
+      </div>
     </div>
   );
 }
@@ -110,14 +184,16 @@ function QuizBuilderModal({ isOpen, onClose, onSubmit, loading, editing }) {
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(quizFormSchema),
     defaultValues: editing
       ? {
           title: editing.title,
-          lessonUuid: editing.lessonUuid,
-          passingScore: editing.passingScore,
+          lessonUuid: editing.lesson?.uuid ?? '',
+          passingScore: editing.passing_score ?? 70,
           status: editing.status,
         }
       : { title: '', lessonUuid: '', passingScore: 70, status: 'draft' },
@@ -179,7 +255,7 @@ function QuizBuilderModal({ isOpen, onClose, onSubmit, loading, editing }) {
     <Modal isOpen={isOpen} onClose={onClose} title={editing ? 'Edit Quiz' : 'Create Quiz'} size="lg">
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
         <Input label="Title" placeholder="Quiz title" error={errors.title?.message} {...register('title')} />
-        <LessonSelect register={register} error={errors.lessonUuid?.message} />
+        <LessonCascade setValue={setValue} value={watch('lessonUuid')} error={errors.lessonUuid?.message} />
         <div className="grid grid-cols-2 gap-4">
           <Input label="Passing Score (%)" type="number" min={0} max={100} error={errors.passingScore?.message} {...register('passingScore')} />
           <Select
@@ -271,11 +347,13 @@ function FlashcardBuilderModal({ isOpen, onClose, onSubmit, loading, editing }) 
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(flashcardFormSchema),
     defaultValues: editing
-      ? { title: editing.title, lessonUuid: editing.lessonUuid, status: editing.status }
+      ? { title: editing.title, lessonUuid: editing.lesson?.uuid ?? '', status: editing.status }
       : { title: '', lessonUuid: '', status: 'draft' },
   });
 
@@ -319,7 +397,7 @@ function FlashcardBuilderModal({ isOpen, onClose, onSubmit, loading, editing }) 
     <Modal isOpen={isOpen} onClose={onClose} title={editing ? 'Edit Flashcard Set' : 'Create Flashcard Set'} size="lg">
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
         <Input label="Title" placeholder="Flashcard set title" error={errors.title?.message} {...register('title')} />
-        <LessonSelect register={register} error={errors.lessonUuid?.message} />
+        <LessonCascade setValue={setValue} value={watch('lessonUuid')} error={errors.lessonUuid?.message} />
         <Select
           label="Status"
           options={[
@@ -395,6 +473,7 @@ function DragDropBuilderModal({ isOpen, onClose, onSubmit, loading, editing }) {
   const {
     register,
     handleSubmit,
+    setValue,
     watch,
     formState: { errors },
   } = useForm({
@@ -402,7 +481,7 @@ function DragDropBuilderModal({ isOpen, onClose, onSubmit, loading, editing }) {
     defaultValues: editing
       ? {
           title: editing.title,
-          lessonUuid: editing.lessonUuid,
+          lessonUuid: editing.lesson?.uuid ?? '',
           type: editing.type,
           instructions: editing.instructions || '',
           status: editing.status,
@@ -456,7 +535,7 @@ function DragDropBuilderModal({ isOpen, onClose, onSubmit, loading, editing }) {
     <Modal isOpen={isOpen} onClose={onClose} title={editing ? 'Edit Drag & Drop Activity' : 'Create Drag & Drop Activity'} size="lg">
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
         <Input label="Title" placeholder="Activity title" error={errors.title?.message} {...register('title')} />
-        <LessonSelect register={register} error={errors.lessonUuid?.message} />
+        <LessonCascade setValue={setValue} value={watch('lessonUuid')} error={errors.lessonUuid?.message} />
         <div className="grid grid-cols-2 gap-4">
           <Select
             label="Type"

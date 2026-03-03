@@ -4,8 +4,8 @@ import api from './axios';
 export const getCourses = (params) =>
   api.get('/courses', { params }).then((r) => r.data);
 
-export const getCourseByUuid = (uuid) =>
-  api.get(`/courses/${uuid}`).then((r) => r.data);
+export const getCourseByUuid = (uuid, params) =>
+  api.get(`/courses/${uuid}`, { params }).then((r) => r.data);
 
 export const createCourse = (data) =>
   api.post('/courses', data).then((r) => r.data);

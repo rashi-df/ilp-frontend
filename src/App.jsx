@@ -28,7 +28,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true }}>
           <Routes>
             {/* Public */}
             <Route path="/login" element={<LoginPage />} />
