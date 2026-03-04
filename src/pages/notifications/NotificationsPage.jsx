@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -23,6 +23,7 @@ import {
 import Spinner from '../../components/ui/Spinner';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
 import Select from '../../components/ui/Select';
 import Badge from '../../components/ui/Badge';
 import SearchBar from '../../components/ui/SearchBar';
@@ -81,6 +82,58 @@ const notificationSchema = z
     { message: 'Scheduled date is required', path: ['scheduledAt'] }
   );
 
+/* ------------------------------------------------------------------ */
+/*  Shared form fields (compose + edit)                               */
+/* ------------------------------------------------------------------ */
+function NotificationFormFields({ register, errors, watchedAudience, watchedSendOption }) {
+  return (
+    <>
+      <Input
+        label="Title"
+        placeholder="Notification title"
+        error={errors.title?.message}
+        {...register('title')}
+      />
+      <Textarea
+        label="Message"
+        placeholder="Write your notification message..."
+        rows={4}
+        className="resize-none"
+        error={errors.message?.message}
+        {...register('message')}
+      />
+      <Select
+        label="Target Audience"
+        options={AUDIENCE_OPTIONS}
+        error={errors.targetAudience?.message}
+        {...register('targetAudience')}
+      />
+      {watchedAudience === 'course_specific' && (
+        <Input
+          label="Course UUID"
+          placeholder="Enter the course UUID"
+          error={errors.targetCourse?.message}
+          {...register('targetCourse')}
+        />
+      )}
+      <Select
+        label="Send Option"
+        options={SEND_OPTIONS}
+        error={errors.sendOption?.message}
+        {...register('sendOption')}
+      />
+      {watchedSendOption === 'schedule' && (
+        <Input
+          type="datetime-local"
+          label="Schedule Date & Time"
+          error={errors.scheduledAt?.message}
+          {...register('scheduledAt')}
+        />
+      )}
+    </>
+  );
+}
+
 /* ================================================================== */
 /*  NotificationsPage                                                  */
 /* ================================================================== */
@@ -101,7 +154,7 @@ export default function NotificationsPage() {
   } = useQuery({
     queryKey: ['notifications', { page, search }],
     queryFn: () => getNotifications({ page, limit: 10, search }),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const notifications = notificationsData?.data || [];
@@ -279,82 +332,13 @@ export default function NotificationsPage() {
             </div>
 
             <form onSubmit={handleSubmit(onComposeSubmit)} className="space-y-4">
-              {/* Title */}
-              <Input
-                label="Title"
-                placeholder="Notification title"
-                error={errors.title?.message}
-                {...register('title')}
+              <NotificationFormFields
+                register={register}
+                errors={errors}
+                watchedAudience={watchedAudience}
+                watchedSendOption={watchedSendOption}
               />
 
-              {/* Message */}
-              <div className="w-full">
-                <label className="block text-sm font-medium text-text-primary mb-1.5">
-                  Message
-                </label>
-                <textarea
-                  placeholder="Write your notification message..."
-                  rows={4}
-                  className={`w-full rounded-lg border bg-surface text-text-primary placeholder:text-text-muted
-                    focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-                    disabled:opacity-50 disabled:cursor-not-allowed
-                    pl-3 pr-3 py-2 text-sm resize-none
-                    ${errors.message ? 'border-danger' : 'border-surface-border'}`}
-                  {...register('message')}
-                />
-                {errors.message && (
-                  <p className="mt-1 text-xs text-danger">{errors.message.message}</p>
-                )}
-              </div>
-
-              {/* Target Audience */}
-              <Select
-                label="Target Audience"
-                options={AUDIENCE_OPTIONS}
-                error={errors.targetAudience?.message}
-                {...register('targetAudience')}
-              />
-
-              {/* Course UUID (conditional) */}
-              {watchedAudience === 'course_specific' && (
-                <Input
-                  label="Course UUID"
-                  placeholder="Enter the course UUID"
-                  error={errors.targetCourse?.message}
-                  {...register('targetCourse')}
-                />
-              )}
-
-              {/* Send Option */}
-              <Select
-                label="Send Option"
-                options={SEND_OPTIONS}
-                error={errors.sendOption?.message}
-                {...register('sendOption')}
-              />
-
-              {/* Schedule DateTime (conditional) */}
-              {watchedSendOption === 'schedule' && (
-                <div className="w-full">
-                  <label className="block text-sm font-medium text-text-primary mb-1.5">
-                    Schedule Date & Time
-                  </label>
-                  <input
-                    type="datetime-local"
-                    className={`w-full rounded-lg border bg-surface text-text-primary
-                      focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-                      disabled:opacity-50 disabled:cursor-not-allowed
-                      pl-3 pr-3 py-2 text-sm
-                      ${errors.scheduledAt ? 'border-danger' : 'border-surface-border'}`}
-                    {...register('scheduledAt')}
-                  />
-                  {errors.scheduledAt && (
-                    <p className="mt-1 text-xs text-danger">{errors.scheduledAt.message}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Submit */}
               <div className="pt-2">
                 <Button
                   type="submit"
@@ -542,74 +526,12 @@ export default function NotificationsPage() {
         size="md"
       >
         <form onSubmit={editHandleSubmit(onEditSubmit)} className="space-y-4">
-          <Input
-            label="Title"
-            placeholder="Notification title"
-            error={editErrors.title?.message}
-            {...editRegister('title')}
+          <NotificationFormFields
+            register={editRegister}
+            errors={editErrors}
+            watchedAudience={editWatchedAudience}
+            watchedSendOption={editWatchedSendOption}
           />
-
-          <div className="w-full">
-            <label className="block text-sm font-medium text-text-primary mb-1.5">
-              Message
-            </label>
-            <textarea
-              placeholder="Write your notification message..."
-              rows={4}
-              className={`w-full rounded-lg border bg-surface text-text-primary placeholder:text-text-muted
-                focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-                disabled:opacity-50 disabled:cursor-not-allowed
-                pl-3 pr-3 py-2 text-sm resize-none
-                ${editErrors.message ? 'border-danger' : 'border-surface-border'}`}
-              {...editRegister('message')}
-            />
-            {editErrors.message && (
-              <p className="mt-1 text-xs text-danger">{editErrors.message.message}</p>
-            )}
-          </div>
-
-          <Select
-            label="Target Audience"
-            options={AUDIENCE_OPTIONS}
-            error={editErrors.targetAudience?.message}
-            {...editRegister('targetAudience')}
-          />
-
-          {editWatchedAudience === 'course_specific' && (
-            <Input
-              label="Course UUID"
-              placeholder="Enter the course UUID"
-              error={editErrors.targetCourse?.message}
-              {...editRegister('targetCourse')}
-            />
-          )}
-
-          <Select
-            label="Send Option"
-            options={SEND_OPTIONS}
-            error={editErrors.sendOption?.message}
-            {...editRegister('sendOption')}
-          />
-
-          {editWatchedSendOption === 'schedule' && (
-            <div className="w-full">
-              <label className="block text-sm font-medium text-text-primary mb-1.5">
-                Schedule Date & Time
-              </label>
-              <input
-                type="datetime-local"
-                className={`w-full rounded-lg border bg-surface text-text-primary
-                  focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  pl-3 pr-3 py-2 text-sm
-                  ${editErrors.scheduledAt ? 'border-danger' : 'border-surface-border'}`}
-                {...editRegister('scheduledAt')}
-              />
-              {editErrors.scheduledAt && (
-                <p className="mt-1 text-xs text-danger">{editErrors.scheduledAt.message}</p>
-              )}
-            </div>
-          )}
 
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" type="button" onClick={closeEditModal}>

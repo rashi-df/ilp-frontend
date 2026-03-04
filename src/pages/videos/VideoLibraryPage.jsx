@@ -3,7 +3,7 @@ import { MediaPlayer, MediaProvider, Menu, useVideoQualityOptions, usePlaybackRa
 import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/layouts/default';
 import '@vidstack/react/player/styles/default/theme.css';
 import '@vidstack/react/player/styles/default/layouts/video.css';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -31,6 +31,7 @@ import { getCourses, getCourseByUuid } from '../../api/courses';
 import { getCategories } from '../../api/categories';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
 import SearchBar from '../../components/ui/SearchBar';
@@ -74,9 +75,9 @@ function FlatSettingsMenu() {
         <SettingsIcon className="vds-icon vds-rotate-icon" />
       </Menu.Button>
       <Menu.Items
-        className="vds-menu-items"
+        className="vds-menu-items ilp-settings-items bg-zinc-900 rounded-lg overflow-auto border border-white/10 shadow-xl "
         placement="top end"
-        style={{ minWidth: '220px', minHeight: panel !== null ? '220px' : undefined }}
+        style={{ width: '220px', minHeight: panel !== null ? '220px' : undefined, transition: 'none' }}
       >
 
         {/* ── Main panel ── */}
@@ -126,7 +127,7 @@ function FlatSettingsMenu() {
               {rates.map(({ label, value }) => (
                 <Menu.Radio
                   key={value}
-                  className="flex w-full items-center px-4 py-2 text-sm text-white/90 hover:bg-white/10 cursor-pointer"
+                  className="flex w-full items-center !pl-4 pr-4 py-2 text-sm text-white/90 hover:bg-white/10 cursor-pointer"
                   value={value}
                 >
                   <span className="w-5 shrink-0 text-center text-white text-base">
@@ -160,7 +161,7 @@ function FlatSettingsMenu() {
               {qualities.map(({ label, value, bitrateText }) => (
                 <Menu.Radio
                   key={value}
-                  className="flex w-full items-center px-4 py-2 text-sm text-white/90 hover:bg-white/10 cursor-pointer"
+                  className="flex w-full items-center !pl-4 pr-4 py-2 text-sm text-white/90 hover:bg-white/10 cursor-pointer"
                   value={value}
                 >
                   <span className="w-5 shrink-0 text-center text-white text-base">
@@ -251,19 +252,13 @@ function UploadVideoForm({ onSubmit, loading, uploading, uploadProgress }) {
         error={errors.title?.message}
         {...register('title')}
       />
-      <div className="w-full">
-        <label className="block text-sm font-medium text-text-primary mb-1.5">
-          Description
-        </label>
-        <textarea
-          {...register('description')}
-          placeholder="Optional description"
-          rows={3}
-          className="w-full rounded-lg border border-surface-border bg-surface text-text-primary
-            placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30
-            focus:border-primary px-3 py-2 text-sm resize-none"
-        />
-      </div>
+      <Textarea
+        label="Description"
+        rows={3}
+        className="resize-none"
+        placeholder="Optional description"
+        {...register('description')}
+      />
       <div className="w-full">
         <label className="block text-sm font-medium text-text-primary mb-1.5">
           Video File
@@ -308,19 +303,13 @@ function EditVideoForm({ defaultValues, onSubmit, loading }) {
         error={errors.title?.message}
         {...register('title')}
       />
-      <div className="w-full">
-        <label className="block text-sm font-medium text-text-primary mb-1.5">
-          Description
-        </label>
-        <textarea
-          {...register('description')}
-          placeholder="Optional description"
-          rows={3}
-          className="w-full rounded-lg border border-surface-border bg-surface text-text-primary
-            placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30
-            focus:border-primary px-3 py-2 text-sm resize-none"
-        />
-      </div>
+      <Textarea
+        label="Description"
+        rows={3}
+        className="resize-none"
+        placeholder="Optional description"
+        {...register('description')}
+      />
       <div className="flex justify-end gap-3 pt-2">
         <Button type="submit" loading={loading}>
           Save Changes
@@ -502,7 +491,7 @@ export default function VideoLibraryPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['videos', { page, search }],
     queryFn: () => getVideos({ page, limit: 20, search: search || undefined }),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const videos = data?.data || [];

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -25,6 +25,7 @@ import { getCategories } from '../../api/categories';
 
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
 import Select from '../../components/ui/Select';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
@@ -318,12 +319,12 @@ function QuizBuilderModal({ isOpen, onClose, onSubmit, loading, editing }) {
                   ))}
                 </div>
 
-                <textarea
+                <Textarea
                   placeholder="Explanation (optional)"
                   value={q.explanation}
                   onChange={(e) => updateQuestion(qIdx, 'explanation', e.target.value)}
                   rows={2}
-                  className="w-full rounded-lg border border-surface-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary px-3 py-2 text-sm resize-none"
+                  className="resize-none"
                 />
               </div>
             ))}
@@ -556,15 +557,13 @@ function DragDropBuilderModal({ isOpen, onClose, onSubmit, loading, editing }) {
             {...register('status')}
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-1.5">Instructions</label>
-          <textarea
-            placeholder="Instructions for the activity"
-            rows={3}
-            {...register('instructions')}
-            className="w-full rounded-lg border border-surface-border bg-surface text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary px-3 py-2 text-sm resize-none"
-          />
-        </div>
+        <Textarea
+          label="Instructions"
+          placeholder="Instructions for the activity"
+          rows={3}
+          className="resize-none"
+          {...register('instructions')}
+        />
 
         {/* Items */}
         <div className="border-t border-surface-border pt-4">
@@ -658,21 +657,21 @@ export default function ActivityBuilderPage() {
     queryKey: ['quizzes', { search, page }],
     queryFn: () => getQuizzes({ search, page, limit: 20 }),
     enabled: activeTab === 'quizzes',
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const flashcardsQuery = useQuery({
     queryKey: ['flashcardSets', { search, page }],
     queryFn: () => getFlashcardSets({ search, page, limit: 20 }),
     enabled: activeTab === 'flashcards',
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const dragDropQuery = useQuery({
     queryKey: ['dragDropActivities', { search, page }],
     queryFn: () => getDragDropActivities({ search, page, limit: 20 }),
     enabled: activeTab === 'dragdrop',
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   /* ---- Mutations: Quizzes ---- */

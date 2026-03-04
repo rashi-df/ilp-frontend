@@ -14,20 +14,23 @@ export default function Header({ onMenuClick }) {
         {/* Mobile menu button */}
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-1.5 rounded-lg text-text-secondary hover:bg-surface-alt"
+          aria-label="Open navigation"
+          className="lg:hidden p-1.5 rounded-lg text-text-secondary hover:bg-surface-alt focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-5 h-5" aria-hidden="true" />
         </button>
 
         {/* Search */}
         <div className="flex-1 max-w-md hidden sm:block">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" aria-hidden="true" />
             <input
-              type="text"
-              placeholder="Search..."
+              type="search"
+              name="search"
+              aria-label="Search"
+              placeholder="Search…"
               className="w-full pl-10 pr-4 py-2 text-sm bg-surface-alt rounded-lg border-0
-                focus:outline-none focus:ring-2 focus:ring-primary/30
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30
                 placeholder:text-text-muted text-text-primary"
             />
           </div>
@@ -38,9 +41,12 @@ export default function Header({ onMenuClick }) {
         {/* Right side */}
         <div className="flex items-center gap-3">
           {/* Notifications */}
-          <button className="relative p-2 rounded-lg text-text-secondary hover:bg-surface-alt">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-danger rounded-full" />
+          <button
+            aria-label="Notifications"
+            className="relative p-2 rounded-lg text-text-secondary hover:bg-surface-alt focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          >
+            <Bell className="w-5 h-5" aria-hidden="true" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-danger rounded-full" aria-hidden="true" />
           </button>
 
           {/* User avatar */}

@@ -85,8 +85,12 @@ export default function Sidebar({ open, onClose }) {
               <p className="text-xs text-slate-400">Admin Panel</p>
             </div>
           </div>
-          <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white">
-            <X className="w-5 h-5" />
+          <button
+            onClick={onClose}
+            aria-label="Close sidebar"
+            className="lg:hidden text-slate-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30 rounded"
+          >
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -111,7 +115,7 @@ export default function Sidebar({ open, onClose }) {
                     }`
                   }
                 >
-                  <item.icon className="w-4 h-4 flex-shrink-0" />
+                  <item.icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                   <span className="flex-1">{item.name}</span>
                   {item.badge !== undefined && item.badge !== null && (
                     <span className="bg-danger text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">

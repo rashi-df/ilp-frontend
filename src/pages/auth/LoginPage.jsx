@@ -44,18 +44,23 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <h2 className="text-xl font-semibold text-text-primary mb-6">Sign in to your account</h2>
 
-          {error && (
-            <div className="mb-4 p-3 bg-danger-bg rounded-lg text-sm text-danger">
-              {error}
-            </div>
-          )}
+          <div aria-live="polite" aria-atomic="true">
+            {error && (
+              <div className="mb-4 p-3 bg-danger-bg rounded-lg text-sm text-danger" role="alert">
+                {error}
+              </div>
+            )}
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               label="Email"
               type="email"
+              name="email"
+              autoComplete="email"
               icon={Mail}
               placeholder="admin@ilp.com"
+              spellCheck={false}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -63,6 +68,8 @@ export default function LoginPage() {
             <Input
               label="Password"
               type="password"
+              name="password"
+              autoComplete="current-password"
               icon={Lock}
               placeholder="Enter your password"
               value={password}

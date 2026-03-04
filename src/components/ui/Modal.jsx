@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
@@ -16,6 +16,7 @@ export default function Modal({
   size = 'md',
   children,
 }) {
+  const titleId = useId();
   const handleKeyDown = useCallback(
     (e) => {
       if (e.key === 'Escape') onClose();
@@ -41,6 +42,7 @@ export default function Modal({
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
+      aria-labelledby={titleId}
     >
       {/* Overlay */}
       <div
@@ -51,16 +53,17 @@ export default function Modal({
       {/* Panel */}
       <div
         className={`relative w-full ${sizes[size]} bg-surface rounded-xl shadow-xl
-          border border-surface-border animate-fade-in`}
+          border border-surface-border animate-fade-in overscroll-contain`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-surface-border">
-          <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
+          <h2 id={titleId} className="text-lg font-semibold text-text-primary">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-alt transition-colors"
+            aria-label="Close"
+            className="p-1 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-alt transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 

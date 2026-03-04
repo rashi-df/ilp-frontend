@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { getInitials } from '../../utils/formatters';
 import { useCrudModal } from '../../hooks/useCrudModal';
 import { usePaginatedQuery } from '../../hooks/usePaginatedQuery';
@@ -139,7 +139,7 @@ export default function UsersPage() {
         page,
         limit: PAGE_SIZE,
       }),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const users = usersResponse?.data || usersResponse?.users || [];
@@ -196,7 +196,7 @@ export default function UsersPage() {
   };
 
   /* ---- Column definitions ---- */
-  const studentColumns = [
+  const studentColumns = useMemo(() => [
     {
       key: 'name',
       header: 'Name',
@@ -278,9 +278,9 @@ export default function UsersPage() {
         </div>
       ),
     },
-  ];
+  ], [openEdit, toggleMutation]);
 
-  const mentorColumns = [
+  const mentorColumns = useMemo(() => [
     {
       key: 'name',
       header: 'Name',
@@ -348,7 +348,7 @@ export default function UsersPage() {
         </div>
       ),
     },
-  ];
+  ], [openEdit, toggleMutation]);
 
   const columns = activeTab === 'student' ? studentColumns : mentorColumns;
   const roleLabel = activeTab === 'student' ? 'Student' : 'Mentor';

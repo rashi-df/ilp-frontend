@@ -9,3 +9,14 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Fix: Prevent settings gear menu height animation that causes layout shift on repeated opens.
+   !important is required to override Vidstack's JS-set inline transition property. */
+.ilp-settings-items.vds-menu-items {
+  transition: none !important;
+}
+
+/* Suppress native browser clear button on search inputs — we render our own. */
+input[type="search"]::-webkit-search-cancel-button {
+  display: none;
+}

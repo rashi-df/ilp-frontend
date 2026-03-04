@@ -5,28 +5,30 @@ import Spinner from '../../components/ui/Spinner';
 import { getInitials, formatDate, formatRelativeTime } from '../../utils/formatters';
 import {
   Users,
-  DollarSign,
+  IndianRupee,
   ClipboardList,
   TrendingUp,
   UserPlus,
   BookOpen,
   CreditCard,
   MessageSquare,
+  Award,
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
 /*  Activity-type styling                                             */
 /* ------------------------------------------------------------------ */
 const activityConfig = {
-  enrollment: { dot: 'bg-primary', icon: UserPlus },
-  submission: { dot: 'bg-success', icon: BookOpen },
-  course: { dot: 'bg-success', icon: BookOpen },
-  payment: { dot: 'bg-warning', icon: CreditCard },
-  review: { dot: 'bg-danger', icon: MessageSquare },
+  enrollment:  { dot: 'bg-primary', text: 'text-primary', icon: UserPlus },
+  submission:  { dot: 'bg-success', text: 'text-success', icon: BookOpen },
+  course:      { dot: 'bg-success', text: 'text-success', icon: BookOpen },
+  payment:     { dot: 'bg-warning', text: 'text-warning', icon: CreditCard },
+  review:      { dot: 'bg-danger',  text: 'text-danger',  icon: MessageSquare },
+  certificate: { dot: 'bg-warning', text: 'text-warning', icon: Award },
 };
 
 function getActivityStyle(type) {
-  return activityConfig[type] || { dot: 'bg-text-muted', icon: MessageSquare };
+  return activityConfig[type] || { dot: 'bg-text-muted', text: 'text-text-muted', icon: MessageSquare };
 }
 
 /* ------------------------------------------------------------------ */
@@ -34,7 +36,7 @@ function getActivityStyle(type) {
 /* ------------------------------------------------------------------ */
 const statCards = [
   { key: 'totalStudents', title: 'Total Students', icon: Users, color: 'primary', prefix: '' },
-  { key: 'monthlyRevenue', title: 'Monthly Revenue', icon: DollarSign, color: 'success', prefix: '$' },
+  { key: 'monthlyRevenue', title: 'Monthly Fee Collection', icon: IndianRupee, color: 'success', prefix: '₹' },
   { key: 'pendingReviews', title: 'Pending Reviews', icon: ClipboardList, color: 'warning', prefix: '' },
   { key: 'completionRate', title: 'Completion Rate', icon: TrendingUp, color: 'danger', prefix: '', suffix: '%' },
 ];
@@ -141,8 +143,8 @@ export default function DashboardPage() {
             </div>
           ) : (
             <ul className="divide-y divide-surface-border">
-              {enrollments.map((enrollment, idx) => (
-                <li key={enrollment.id || idx} className="px-5 py-4 flex items-center gap-4 hover:bg-surface-alt transition-colors">
+              {enrollments.map((enrollment) => (
+                <li key={enrollment.id} className="px-5 py-4 flex items-center gap-4 hover:bg-surface-alt transition-colors">
                   {/* Avatar */}
                   <div className="w-10 h-10 rounded-full bg-primary-50 text-primary flex items-center justify-center text-sm font-semibold shrink-0">
                     {getInitials(enrollment.studentName)}
@@ -188,16 +190,16 @@ export default function DashboardPage() {
             </div>
           ) : (
             <ul className="divide-y divide-surface-border">
-              {activity.map((item, idx) => {
+              {activity.map((item) => {
                 const style = getActivityStyle(item.type);
                 const ActivityIcon = style.icon;
 
                 return (
-                  <li key={item.id || idx} className="px-5 py-4 flex items-start gap-3 hover:bg-surface-alt transition-colors">
+                  <li key={item.id} className="px-5 py-4 flex items-start gap-3 hover:bg-surface-alt transition-colors">
                     {/* Timeline dot */}
                     <div className="mt-1 shrink-0">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${style.dot} bg-opacity-10`}>
-                        <ActivityIcon className={`w-4 h-4 ${style.dot.replace('bg-', 'text-')}`} />
+                        <ActivityIcon className={`w-4 h-4 ${style.text}`} />
                       </div>
                     </div>
 

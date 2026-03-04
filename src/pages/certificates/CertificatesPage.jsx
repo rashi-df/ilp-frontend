@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -23,6 +23,7 @@ import {
 } from '../../api/certificates';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
 import Select from '../../components/ui/Select';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
@@ -319,23 +320,13 @@ function RevokeCertificateForm({ certificate, onSubmit, loading }) {
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-text-primary mb-1.5">
-          Reason for Revocation
-        </label>
-        <textarea
-          rows={3}
-          placeholder="Enter the reason for revoking this certificate..."
-          className={`w-full rounded-lg border bg-surface text-text-primary placeholder:text-text-muted
-            focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-            px-3 py-2 text-sm
-            ${errors.reason ? 'border-danger' : 'border-surface-border'}`}
-          {...register('reason')}
-        />
-        {errors.reason && (
-          <p className="mt-1 text-xs text-danger">{errors.reason.message}</p>
-        )}
-      </div>
+      <Textarea
+        label="Reason for Revocation"
+        rows={3}
+        placeholder="Enter the reason for revoking this certificate..."
+        error={errors.reason?.message}
+        {...register('reason')}
+      />
 
       <div className="flex justify-end gap-3 pt-2">
         <Button type="submit" variant="danger" loading={loading}>
@@ -392,7 +383,7 @@ export default function CertificatesPage() {
         limit: PAGE_SIZE,
       }),
     enabled: activeTab === 'certificates',
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const certificates = certsResponse?.data || [];

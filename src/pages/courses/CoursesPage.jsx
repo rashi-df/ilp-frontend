@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -31,6 +31,7 @@ import { getUsers } from '../../api/users';
 import Spinner from '../../components/ui/Spinner';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import Textarea from '../../components/ui/Textarea';
 import Select from '../../components/ui/Select';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
@@ -94,19 +95,12 @@ function CourseForm({ defaultValues, onSubmit, loading, categories, mentors }) {
         error={errors.title?.message}
         {...register('title')}
       />
-      <div>
-        <label className="block text-sm font-medium text-text-primary mb-1.5">
-          Description
-        </label>
-        <textarea
-          rows={3}
-          placeholder="Brief description of the course..."
-          className="w-full rounded-lg border border-surface-border bg-surface text-text-primary
-            placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30
-            focus:border-primary pl-3 pr-3 py-2 text-sm"
-          {...register('description')}
-        />
-      </div>
+      <Textarea
+        label="Description"
+        rows={3}
+        placeholder="Brief description of the course..."
+        {...register('description')}
+      />
       <Select
         label="Category"
         options={categoryOptions}
@@ -169,6 +163,7 @@ export default function CoursesPage() {
         category: filterCategory || undefined,
         status: filterStatus || undefined,
       }),
+    placeholderData: keepPreviousData,
   });
 
   const { data: categoriesData } = useQuery({

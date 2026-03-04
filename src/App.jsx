@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -5,18 +6,26 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/shared/ProtectedRoute';
 import AdminLayout from './components/layout/AdminLayout';
 import LoginPage from './pages/auth/LoginPage';
-import DashboardPage from './pages/dashboard/DashboardPage';
-import UsersPage from './pages/users/UsersPage';
-import CoursesPage from './pages/courses/CoursesPage';
-import CourseContentPage from './pages/courses/CourseContentPage';
-import VideoLibraryPage from './pages/videos/VideoLibraryPage';
-import ActivityBuilderPage from './pages/activities/ActivityBuilderPage';
-import HomeworkPage from './pages/homework/HomeworkPage';
-import PaymentsPage from './pages/payments/PaymentsPage';
-import CertificatesPage from './pages/certificates/CertificatesPage';
-import NotificationsPage from './pages/notifications/NotificationsPage';
-import CategoriesPage from './pages/categories/CategoriesPage';
-import SettingsPage from './pages/settings/SettingsPage';
+import Spinner from './components/ui/Spinner';
+
+const DashboardPage       = lazy(() => import('./pages/dashboard/DashboardPage'));
+const UsersPage           = lazy(() => import('./pages/users/UsersPage'));
+const CoursesPage         = lazy(() => import('./pages/courses/CoursesPage'));
+const CourseContentPage   = lazy(() => import('./pages/courses/CourseContentPage'));
+const VideoLibraryPage    = lazy(() => import('./pages/videos/VideoLibraryPage'));
+const ActivityBuilderPage = lazy(() => import('./pages/activities/ActivityBuilderPage'));
+const HomeworkPage        = lazy(() => import('./pages/homework/HomeworkPage'));
+const PaymentsPage        = lazy(() => import('./pages/payments/PaymentsPage'));
+const CertificatesPage    = lazy(() => import('./pages/certificates/CertificatesPage'));
+const NotificationsPage   = lazy(() => import('./pages/notifications/NotificationsPage'));
+const CategoriesPage      = lazy(() => import('./pages/categories/CategoriesPage'));
+const SettingsPage        = lazy(() => import('./pages/settings/SettingsPage'));
+
+const pageFallback = (
+  <div className="flex h-full items-center justify-center">
+    <Spinner />
+  </div>
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +38,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter future={{ v7_startTransition: true }}>
+          <Suspense fallback={pageFallback}>
           <Routes>
             {/* Public */}
             <Route path="/login" element={<LoginPage />} />
@@ -58,6 +68,7 @@ function App() {
             {/* Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
         <Toaster position="top-right" />
       </AuthProvider>

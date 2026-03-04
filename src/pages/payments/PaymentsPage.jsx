@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -198,7 +198,7 @@ export default function PaymentsPage() {
         limit: PAGE_SIZE,
       }),
     enabled: activeTab === 'transactions',
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const transactions = txResponse?.data || [];
@@ -215,7 +215,7 @@ export default function PaymentsPage() {
         limit: PAGE_SIZE,
       }),
     enabled: activeTab === 'verify',
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const pendingTransactions = pendingResponse?.data || [];
@@ -359,7 +359,7 @@ export default function PaymentsPage() {
       header: 'Amount',
       render: (row) => (
         <span className="font-semibold">
-          ${row.amount?.toFixed(2)} {row.currency}
+          ₹{row.amount?.toFixed(2)} {row.currency}
         </span>
       ),
     },
@@ -448,7 +448,7 @@ export default function PaymentsPage() {
       header: 'Amount',
       render: (row) => (
         <span className="font-semibold">
-          ${row.amount?.toFixed(2)} {row.currency}
+          ₹{row.amount?.toFixed(2)} {row.currency}
         </span>
       ),
     },
@@ -573,7 +573,7 @@ export default function PaymentsPage() {
                       {/* Price */}
                       <div className="mb-4">
                         <span className="text-3xl font-bold text-text-primary">
-                          ${plan.price?.toFixed(2)}
+                          ₹{plan.price?.toFixed(2)}
                         </span>
                         <span className="text-text-muted text-sm ml-1">
                           /{plan.interval === 'yearly' ? 'year' : 'month'}

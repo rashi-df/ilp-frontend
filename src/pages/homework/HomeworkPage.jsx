@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -319,6 +319,7 @@ export default function HomeworkPage() {
         status: hwFilterStatus || undefined,
       }),
     enabled: activeTab === 'homework',
+    placeholderData: keepPreviousData,
   });
 
   const homeworks = hwResponse?.data || [];
@@ -433,6 +434,7 @@ export default function HomeworkPage() {
         status: subFilterStatus || undefined,
       }),
     enabled: activeTab === 'submissions',
+    placeholderData: keepPreviousData,
   });
 
   const submissions = subResponse?.data || [];

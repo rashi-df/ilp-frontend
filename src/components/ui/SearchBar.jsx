@@ -4,7 +4,8 @@ import { Search, X } from 'lucide-react';
 export default function SearchBar({
   value = '',
   onChange,
-  placeholder = 'Search...',
+  placeholder = 'Search…',
+  'aria-label': ariaLabel = 'Search',
 }) {
   const [internal, setInternal] = useState(value);
   const timerRef = useRef(null);
@@ -38,23 +39,25 @@ export default function SearchBar({
   return (
     <div className="relative w-full max-w-sm">
       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-        <Search className="w-4 h-4 text-text-muted" />
+        <Search className="w-4 h-4 text-text-muted" aria-hidden="true" />
       </div>
       <input
-        type="text"
+        type="search"
+        aria-label={ariaLabel}
         value={internal}
         onChange={handleChange}
         placeholder={placeholder}
         className="w-full rounded-lg border border-surface-border bg-surface text-text-primary
-          placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30
-          focus:border-primary pl-10 pr-9 py-2 text-sm"
+          placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30
+          focus-visible:border-primary pl-10 pr-9 py-2 text-sm"
       />
       {internal && (
         <button
           onClick={handleClear}
-          className="absolute inset-y-0 right-0 pr-3 flex items-center text-text-muted hover:text-text-primary"
+          aria-label="Clear search"
+          className="absolute inset-y-0 right-0 pr-3 flex items-center text-text-muted hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded"
         >
-          <X className="w-4 h-4" />
+          <X className="w-4 h-4" aria-hidden="true" />
         </button>
       )}
     </div>

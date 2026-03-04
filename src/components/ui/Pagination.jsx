@@ -1,5 +1,8 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+const btnBase = `inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm
+  transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30`;
+
 export default function Pagination({ page = 1, totalPages = 1, onPageChange }) {
   if (totalPages <= 1) return null;
 
@@ -25,16 +28,16 @@ export default function Pagination({ page = 1, totalPages = 1, onPageChange }) {
   const pages = getPages();
 
   return (
-    <div className="flex items-center justify-center gap-1">
+    <nav aria-label="Pagination" className="flex items-center justify-center gap-1">
       {/* Previous */}
       <button
         onClick={() => onPageChange(page - 1)}
         disabled={page <= 1}
-        className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm
-          text-text-secondary hover:bg-surface-alt transition-colors
-          disabled:opacity-50 disabled:cursor-not-allowed"
+        aria-label="Go to previous page"
+        className={`${btnBase} text-text-secondary hover:bg-surface-alt
+          disabled:opacity-50 disabled:cursor-not-allowed`}
       >
-        <ChevronLeft className="w-4 h-4" />
+        <ChevronLeft className="w-4 h-4" aria-hidden="true" />
       </button>
 
       {/* Page numbers */}
@@ -42,14 +45,14 @@ export default function Pagination({ page = 1, totalPages = 1, onPageChange }) {
         <>
           <button
             onClick={() => onPageChange(1)}
-            className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm
-              text-text-secondary hover:bg-surface-alt transition-colors"
+            aria-label="Page 1"
+            className={`${btnBase} text-text-secondary hover:bg-surface-alt`}
           >
             1
           </button>
           {pages[0] > 2 && (
-            <span className="w-9 h-9 flex items-center justify-center text-text-muted text-sm">
-              ...
+            <span className="w-9 h-9 flex items-center justify-center text-text-muted text-sm" aria-hidden="true">
+              …
             </span>
           )}
         </>
@@ -59,8 +62,9 @@ export default function Pagination({ page = 1, totalPages = 1, onPageChange }) {
         <button
           key={p}
           onClick={() => onPageChange(p)}
-          className={`inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm
-            transition-colors
+          aria-label={`Page ${p}`}
+          aria-current={p === page ? 'page' : undefined}
+          className={`${btnBase}
             ${
               p === page
                 ? 'bg-primary text-white font-medium'
@@ -74,14 +78,14 @@ export default function Pagination({ page = 1, totalPages = 1, onPageChange }) {
       {pages[pages.length - 1] < totalPages && (
         <>
           {pages[pages.length - 1] < totalPages - 1 && (
-            <span className="w-9 h-9 flex items-center justify-center text-text-muted text-sm">
-              ...
+            <span className="w-9 h-9 flex items-center justify-center text-text-muted text-sm" aria-hidden="true">
+              …
             </span>
           )}
           <button
             onClick={() => onPageChange(totalPages)}
-            className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm
-              text-text-secondary hover:bg-surface-alt transition-colors"
+            aria-label={`Page ${totalPages}`}
+            className={`${btnBase} text-text-secondary hover:bg-surface-alt`}
           >
             {totalPages}
           </button>
@@ -92,12 +96,12 @@ export default function Pagination({ page = 1, totalPages = 1, onPageChange }) {
       <button
         onClick={() => onPageChange(page + 1)}
         disabled={page >= totalPages}
-        className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm
-          text-text-secondary hover:bg-surface-alt transition-colors
-          disabled:opacity-50 disabled:cursor-not-allowed"
+        aria-label="Go to next page"
+        className={`${btnBase} text-text-secondary hover:bg-surface-alt
+          disabled:opacity-50 disabled:cursor-not-allowed`}
       >
-        <ChevronRight className="w-4 h-4" />
+        <ChevronRight className="w-4 h-4" aria-hidden="true" />
       </button>
-    </div>
+    </nav>
   );
 }
